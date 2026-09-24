@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base theme: Compose draws everything; this only styles the window. -->
+    <style name="Theme.Guftugu" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/guftugu_surface</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+
+    <!-- Splash: shown by the system until MainActivity draws its first frame. -->
+    <style name="Theme.Guftugu.Splash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/guftugu_cream</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher_foreground</item>
+        <item name="windowSplashScreenAnimationDuration">300</item>
+        <item name="postSplashScreenTheme">@style/Theme.Guftugu</item>
+    </style>
+</resources>

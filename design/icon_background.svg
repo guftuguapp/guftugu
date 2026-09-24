@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1080" width="1080" height="1080">
+<defs>
+<linearGradient id="plate" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#F7E4A0"/><stop offset="0.28" stop-color="#DDB84E"/><stop offset="0.5" stop-color="#B08A2C"/><stop offset="0.72" stop-color="#E6C564"/><stop offset="1" stop-color="#8F6E1E"/></linearGradient>
+<radialGradient id="glow" cx="0.5" cy="0.5" r="0.55"><stop offset="0" stop-color="#FFF6D0" stop-opacity="0.55"/><stop offset="1" stop-color="#FFF6D0" stop-opacity="0"/></radialGradient>
+<pattern id="hatch" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="12" height="1.1" fill="#FFF6CC" opacity="0.22"/></pattern>
+</defs>
+<rect width="1080" height="1080" fill="url(#plate)"/>
+<rect width="1080" height="1080" fill="url(#hatch)"/>
+<rect width="1080" height="1080" fill="url(#glow)"/>
+<rect x="206" y="206" width="668" height="668" rx="22" fill="none" stroke="#6E5312" stroke-width="3" opacity="0.55"/>
+<rect x="200" y="200" width="680" height="680" rx="26" fill="none" stroke="#FFF2B8" stroke-width="2" opacity="0.6"/>
+</svg>

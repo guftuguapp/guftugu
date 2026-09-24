@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Paths exposed through FileProvider (${applicationId}.fileprovider). -->
+<paths>
+    <!-- Camera captures (photos / videos) before they are encrypted and uploaded. -->
+    <cache-path name="captures" path="captures/" />
+    <!-- Decrypted media cache, shared with viewers / "open with". -->
+    <cache-path name="media" path="media/" />
+    <!-- Voice notes recorded in-app. -->
+    <files-path name="recordings" path="recordings/" />
+</paths>

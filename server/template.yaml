@@ -1,0 +1,331 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >-
+  Guftugu - private self-hosted chat server. Strictly pay-per-use: API Gateway
+  (HTTP + WebSocket), Lambda (arm64), DynamoDB on-demand, S3, CloudWatch Logs.
+  No VPC, no NAT Gateway, no ElastiCache, no EC2, no Secrets Manager, no
+  customer KMS keys, no alarms, no provisioned concurrency, no PITR, no custom
+  domain - nothing that bills while idle.
+
+Parameters:
+  Stage:
+    Type: String
+    Default: prod
+    Description: Deployment stage name (used for the table name and the WebSocket stage).
+    AllowedPattern: "^[a-zA-Z0-9_-]{1,32}$"
+  AdminKey:
+    Type: String
+    NoEcho: true
+    MinLength: 16
+    Description: Secret for the admin CLI (X-Admin-Key). At least 16 characters.
+  ServerName:
+    Type: String
+    Default: Guftugu
+    Description: Human-readable name shown to members (well-known "name").
+  MaxUploadMB:
+    Type: Number
+    Default: 100
+    MinValue: 1
+    MaxValue: 5000
+    Description: Maximum attachment size in MiB.
+  LogRetentionDays:
+    Type: Number
+    Default: 14
+    AllowedValues: [1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365]
+    Description: CloudWatch Logs retention for both functions.
+
+Globals:
+  Function:
+    Runtime: nodejs22.x
+    Architectures: [arm64]
+    MemorySize: 512
+    Timeout: 15
+    Environment:
+      Variables:
+        TABLE_NAME: !Ref Table
+        BUCKET_NAME: !Ref MediaBucket
+        ADMIN_KEY: !Ref AdminKey
+        SERVER_NAME: !Ref ServerName
+        MAX_UPLOAD_MB: !Ref MaxUploadMB
+        API_URL: !Sub "https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com"
+        WS_URL: !Sub "wss://${WebSocketApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}"
+        WS_MANAGEMENT_ENDPOINT: !Sub "https://${WebSocketApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}"
+
+Resources:
+  # --------------------------------------------------------------------------
+  # Storage (both retained on stack delete so a mistake never destroys data)
+  # --------------------------------------------------------------------------
+  Table:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: !Sub "${AWS::StackName}-${Stage}"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+        - AttributeName: GSI1PK
+          AttributeType: S
+        - AttributeName: GSI1SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: GSI1
+          KeySchema:
+            - AttributeName: GSI1PK
+              KeyType: HASH
+            - AttributeName: GSI1SK
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+      # Encryption at rest uses the default AWS-owned key (free); no customer KMS key.
+
+  MediaBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      LifecycleConfiguration:
+        Rules:
+          - Id: abort-incomplete-multipart
+            Status: Enabled
+            AbortIncompleteMultipartUpload:
+              DaysAfterInitiation: 1
+      CorsConfiguration:
+        CorsRules:
+          - AllowedMethods: [GET, PUT, HEAD]
+            AllowedOrigins: ["*"]
+            AllowedHeaders: ["*"]
+            MaxAge: 3600
+
+  # --------------------------------------------------------------------------
+  # HTTP API (REST endpoints). Defined with plain ApiGatewayV2 resources so the
+  # functions can reference the API id in their environment without a
+  # circular dependency (AWS::Serverless::HttpApi events would embed the
+  # function ARN inside the API definition body).
+  # --------------------------------------------------------------------------
+  HttpApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub "${AWS::StackName}-http"
+      ProtocolType: HTTP
+      Description: Guftugu REST API
+
+  HttpApiStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref HttpApi
+      StageName: $default
+      AutoDeploy: true
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 50
+        ThrottlingRateLimit: 25
+
+  HttpApiIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref HttpApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt HttpFunction.Arn
+      PayloadFormatVersion: "2.0"
+      TimeoutInMillis: 15000
+
+  HttpApiRootRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: ANY /
+      Target: !Sub "integrations/${HttpApiIntegration}"
+
+  HttpApiProxyRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref HttpApi
+      RouteKey: ANY /{proxy+}
+      Target: !Sub "integrations/${HttpApiIntegration}"
+
+  HttpFunctionApiPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref HttpFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${HttpApi}/*"
+
+  HttpFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: HttpFunctionLogGroup # so Lambda never auto-creates an unretained group first
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Format: esm
+        OutExtension: [".js=.mjs"]
+        Sourcemap: false
+        EntryPoints: [src/adapters/aws/lambda-http.ts]
+        External: ["@aws-sdk/*"]
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-http"
+      Description: Guftugu HTTP API handler
+      CodeUri: ./
+      Handler: lambda-http.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref Table
+        - S3CrudPolicy:
+            BucketName: !Ref MediaBucket
+        - Statement:
+            - Sid: ManageWebSocketConnections
+              Effect: Allow
+              Action: execute-api:ManageConnections
+              Resource: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${WebSocketApi}/*"
+
+  HttpFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-http"
+      RetentionInDays: !Ref LogRetentionDays
+
+  # --------------------------------------------------------------------------
+  # WebSocket API (realtime)
+  # --------------------------------------------------------------------------
+  WebSocketApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub "${AWS::StackName}-ws"
+      ProtocolType: WEBSOCKET
+      RouteSelectionExpression: $request.body.type
+      Description: Guftugu realtime WebSocket API
+
+  WsFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: WsFunctionLogGroup
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2022
+        Format: esm
+        OutExtension: [".js=.mjs"]
+        Sourcemap: false
+        EntryPoints: [src/adapters/aws/lambda-ws.ts]
+        External: ["@aws-sdk/*"]
+    Properties:
+      FunctionName: !Sub "${AWS::StackName}-ws"
+      Description: Guftugu WebSocket handler ($connect/$disconnect/$default)
+      CodeUri: ./
+      Handler: lambda-ws.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref Table
+        - S3CrudPolicy:
+            BucketName: !Ref MediaBucket
+        - Statement:
+            - Sid: ManageWebSocketConnections
+              Effect: Allow
+              Action: execute-api:ManageConnections
+              Resource: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${WebSocketApi}/*"
+
+  WsFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AWS::StackName}-ws"
+      RetentionInDays: !Ref LogRetentionDays
+
+  WsIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref WebSocketApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${WsFunction.Arn}/invocations"
+
+  WsConnectRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref WebSocketApi
+      RouteKey: $connect
+      AuthorizationType: NONE
+      Target: !Sub "integrations/${WsIntegration}"
+
+  WsDisconnectRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref WebSocketApi
+      RouteKey: $disconnect
+      Target: !Sub "integrations/${WsIntegration}"
+
+  WsDefaultRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref WebSocketApi
+      RouteKey: $default
+      Target: !Sub "integrations/${WsIntegration}"
+
+  # A Deployment snapshots the routes above. Function code updates need no new
+  # deployment (the integration points at the function ARN), but if you ever
+  # add/change a WebSocket *route*, rename this logical id (e.g. WsDeployment2)
+  # so CloudFormation creates a fresh deployment and repoints the stage.
+  WsDeployment:
+    Type: AWS::ApiGatewayV2::Deployment
+    DependsOn: [WsConnectRoute, WsDisconnectRoute, WsDefaultRoute]
+    Properties:
+      ApiId: !Ref WebSocketApi
+
+  WsStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref WebSocketApi
+      StageName: !Ref Stage
+      DeploymentId: !Ref WsDeployment
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 50
+        ThrottlingRateLimit: 25
+
+  WsFunctionApiPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref WsFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${WebSocketApi}/*"
+
+Outputs:
+  ApiUrl:
+    Description: Base URL of the REST API (put this in invites / the app)
+    Value: !Sub "https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com"
+  WsUrl:
+    Description: WebSocket URL (also served by /.well-known/guftugu)
+    Value: !Sub "wss://${WebSocketApi}.execute-api.${AWS::Region}.amazonaws.com/${Stage}"
+  WellKnownUrl:
+    Description: Discovery document
+    Value: !Sub "https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com/.well-known/guftugu"
+  TableName:
+    Description: DynamoDB table (retained on delete)
+    Value: !Ref Table
+  BucketName:
+    Description: S3 media bucket (retained on delete)
+    Value: !Ref MediaBucket
+  HttpFunctionName:
+    Value: !Ref HttpFunction
+  WsFunctionName:
+    Value: !Ref WsFunction

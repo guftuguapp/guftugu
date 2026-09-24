@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- New conversation: a feather quill writing a flourish. Tinted by the caller. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp" android:viewportWidth="24" android:viewportHeight="24">
+    <!-- feather vane -->
+    <path android:fillColor="#FF000000"
+        android:pathData="M20.6,2.2 C14.6,2.6 9.8,6.4 7.6,12.2 L6.9,14.3 L9.2,13.6 C9.8,13.4 10.4,13.2 10.9,12.9 L9.8,12.6 L12.6,11.4 C13.5,11 14.3,10.4 15,9.7 L13.5,9.6 L16.4,8.1 C18.6,6.6 20.1,4.6 20.6,2.2 Z"/>
+    <!-- shaft -->
+    <path android:strokeColor="#FF000000" android:strokeWidth="1.4" android:strokeLineCap="round" android:fillColor="#00000000"
+        android:pathData="M19.2,3.6 L5.2,17.6"/>
+    <!-- nib -->
+    <path android:fillColor="#FF000000" android:pathData="M5.9,16.2 L7.6,17.9 L4,20 Z"/>
+    <!-- flourish -->
+    <path android:strokeColor="#FF000000" android:strokeWidth="1.2" android:strokeLineCap="round" android:strokeAlpha="0.75" android:fillColor="#00000000"
+        android:pathData="M3.2,21.4 C6,20.6 8.2,21.8 11,21 C13.2,20.4 14.6,19.4 16.4,19.8"/>
+</vector>

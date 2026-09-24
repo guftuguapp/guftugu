@@ -1,0 +1,27 @@
+# Copy to samconfig.toml (git-ignored) and edit, or let `sam deploy --guided`
+# write it for you. Never commit the real file: it contains AdminKey.
+version = 0.1
+
+[default.global.parameters]
+stack_name = "guftugu"
+region = "us-west-2"
+
+[default.build.parameters]
+cached = true
+parallel = true
+
+[default.deploy.parameters]
+resolve_s3 = true            # SAM manages the deployment-artifact bucket (no fixed name)
+capabilities = "CAPABILITY_IAM"
+confirm_changeset = true
+fail_on_empty_changeset = false
+disable_rollback = false
+# AdminKey: >= 16 random characters; it becomes the X-Admin-Key the admin CLI sends.
+# Generate one with:  openssl rand -base64 24
+parameter_overrides = "Stage=\"prod\" AdminKey=\"CHANGE-ME-to-at-least-16-random-chars\" ServerName=\"Our family\" MaxUploadMB=\"100\" LogRetentionDays=\"14\""
+
+[default.validate.parameters]
+lint = true
+
+[default.logs.parameters]
+# `sam logs --tail` uses the stack name above; pass --name guftugu-http or guftugu-ws.

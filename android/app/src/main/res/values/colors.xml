@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="guftugu_green">#FF1B8A5A</color>
+    <color name="guftugu_green_dark">#FF0F5C3C</color>
+    <color name="guftugu_teal">#FF00897B</color>
+    <color name="guftugu_surface">#FFF6FBF7</color>
+    <color name="guftugu_cream">#FFFBF7EE</color>
+</resources>

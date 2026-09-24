@@ -1,0 +1,33 @@
+# Node / server
+node_modules/
+dist/
+.aws-sam/
+samconfig.toml
+*.tsbuildinfo
+coverage/
+
+# Android
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/keystore.properties
+android/*.keystore
+android/*.jks
+android/.idea/
+android/.kotlin/
+*.iml
+.DS_Store
+
+# Admin CLI local config
+.guftugu/
+
+# Local, never published: deployment details, machine notes
+*.local.md
+
+# Design: keep sources (svg/py) and the final logo; renders are regenerated
+design/__pycache__/
+design/*.png
+!design/logo.png
+design/r_*.html
+design/render.html
