@@ -22,7 +22,8 @@ GitHub so others can build the APK and deploy the server to their own cloud.
 | E2EE | Per-conversation AES-256-GCM key, wrapped for every member device with ECDH P-256 (ECIES) and signed by the sender device. Server stores ciphertext only. Attachments encrypted client-side before upload. Call signalling encrypted under the conversation key | server operator cannot read content |
 | At-rest encryption | DynamoDB + S3 server-side encryption on; content is already ciphertext | defence in depth |
 | Calls | WebRTC 1:1, STUN by default, ICE servers served from `GET /config` so TURN can be added without an app rebuild | TURN can't be serverless |
-| Push notifications | None (no FCM). Foreground service keeps the WebSocket alive; `PushProvider` seam for forks | no Google dependency |
+| Push notifications | None (no FCM). Foreground service keeps the WebSocket alive; `PushProvider` seam for forks. The owner doesn't want the always-visible "Guftugu is connected" notice: a one-time card (and two Settings rows) take each phone to the right pages to hide that notification category and let Guftugu keep running (`service/QuietConnection.kt`); message and call notifications stay | no Google dependency; offered FCM/HMS push like WhatsApp, owner chose per-phone hiding |
+| Last seen | Means "last had the app open": the app sends `presence` frames (active on foreground + every minute, inactive on background); the background connection never counts. Shown as "Online" / "Last seen …" under the name | owner noticed "last seen" stuck at the last login |
 | People & invites | Any user can invite (single-use code, shared via WhatsApp/SMS/email or to a phone contact). Using a code makes you friends and opens a 1:1 chat or joins the group it was for. People the admin invited form the family circle and see each other; everyone else sees only friends and people in their groups. Block (no messages/calls/group adds), leave group, leave 1:1 chat | owner's product direction: "A place for your family, friends and coworkers" |
 | Server baked into builds | `guftugu.serverUrl` in `android/local.properties` → `BuildConfig.DEFAULT_SERVER_URL`; people only type the invite code | each builder runs their own server |
 | Admin | `X-Admin-Key` deploy parameter + cloud-agnostic admin CLI (invites, users, groups, ICE config) | simple, portable |
@@ -61,7 +62,7 @@ git-ignored `DEPLOYMENT.local.md`, never in tracked files — this repository is
 
 ```
 docs/            STATUS.md · ARCHITECTURE.md · PROTOCOL.md · SECURITY.md · DATA_MODEL.md · DESIGN.md · ANDROID_MODULES.md · DEPLOY_AWS.md · BUILD_ANDROID.md · ADMIN_CLI.md
-design/          logo.svg (source of the icon and in-app medallion)
+design/          make_logo.py · make_art.py (vector art) · blender/ (realistic icon + banner renders) · export.sh → app resources
 server/          TypeScript server (core + adapters), SAM template, admin CLI, tests
 android/         Kotlin app
 ```

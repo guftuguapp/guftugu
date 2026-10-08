@@ -233,7 +233,7 @@ private fun CheckingBlock() {
 
 @Composable
 private fun FoundBlock(server: ServerInfo?, onConfirm: () -> Unit, onBack: () -> Unit) {
-    val host = remember(server?.apiUrl) { server?.apiUrl?.let { runCatching { java.net.URI(it).host }.getOrNull() ?: it } ?: "" }
+    // Only the circle's name: people never need to see the server address (owner's rule).
     Text(stringResource(R.string.join_found_title), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     Spacer(Modifier.height(6.dp))
     Text(
@@ -243,7 +243,6 @@ private fun FoundBlock(server: ServerInfo?, onConfirm: () -> Unit, onBack: () ->
         textAlign = TextAlign.Center,
     )
     Ornament(Modifier.padding(top = 6.dp, bottom = 6.dp), width = 90.dp)
-    Text(host, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     Spacer(Modifier.height(18.dp))
     GoldButton(text = stringResource(R.string.join_found_join), onClick = onConfirm, modifier = Modifier.fillMaxWidth())
     CraftTextButton(text = stringResource(R.string.join_found_change), onClick = onBack, modifier = Modifier.padding(top = 4.dp))

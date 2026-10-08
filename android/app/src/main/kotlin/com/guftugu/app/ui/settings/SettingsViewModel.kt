@@ -165,6 +165,11 @@ class SettingsViewModel(
                 _notice.value = app.getString(success)
             } catch (t: Throwable) {
                 if (t is CancellationException) throw t
+                // The reason, for `adb logcat -s Guftugu` (no tokens or URLs: ApiException messages read
+                // like "upload failed with HTTP 403")
+                android.util.Log.w("Guftugu", "${app.getString(failure)}: ${t.javaClass.simpleName}: ${t.message}" +
+                    ((t as? com.guftugu.app.data.api.ApiException)?.let { " [code=${it.code} status=${it.status}]" } ?: "") +
+                    (t.cause?.let { " cause=${it.javaClass.simpleName}: ${it.message}" } ?: ""))
                 error.value = app.getString(failure)
             } finally {
                 busy.value = false

@@ -5,7 +5,10 @@
 import type { ClientEvent, ServerEvent } from "../../protocol/types.js";
 import type { App } from "../app-contract.js";
 import { resolveSessionByToken } from "../auth.js";
-import { getConversation, invalidateDevice } from "../cached.js";
+import { getConversation, getUser, invalidateDevice, invalidateUser } from "../cached.js";
+import { toUser } from "../dto.js";
+import { isBlockedBy } from "../services/friends.js";
+import { coMemberIds } from "../services/users.js";
 import { HttpError, badRequest, conflict, forbidden, notFound } from "../errors.js";
 import { isObject } from "../http.js";
 import type { ConnectionRecord, Ports } from "../ports.js";
@@ -27,6 +30,26 @@ export function createWsHandlers(ports: Ports): App["ws"] {
     if (!loaded || !loaded.members.some((m) => m.userId === conn.userId)) throw forbidden("not a member of this conversation");
     const others = loaded.members.map((m) => m.userId).filter((id) => id !== conn.userId);
     await sendToUsers(ports, others, { type: "typing", convId, userId: conn.userId, at: ports.clock.now() });
+  }
+
+  /**
+   * The app reports that it was opened (`active: true`, repeated about once a minute while it stays
+   * open) or closed (`active: false`). "Last seen" is the time of the latest report, so it means
+   * "last had Guftugu open", not "last logged in"; the always-on background connection doesn't
+   * count. People who share a conversation get `user.updated`, except anyone this user blocked.
+   */
+  async function handlePresence(conn: ConnectionRecord, active: boolean): Promise<void> {
+    const now = ports.clock.now();
+    const current = await getUser(ports, conn.userId);
+    // A heartbeat within 20 s of the last stamp changes nothing visible: skip the write and fan-out.
+    if (active && current?.lastSeenAt != null && now - current.lastSeenAt < 20_000) return;
+    const user = await ports.db.users.update(conn.userId, { lastSeenAt: now });
+    await invalidateUser(ports, conn.userId);
+    const audience: string[] = [];
+    for (const id of await coMemberIds(ports, conn.userId)) {
+      if (id !== conn.userId && !(await isBlockedBy(ports, conn.userId, id))) audience.push(id);
+    }
+    if (audience.length > 0) await sendToUsers(ports, audience, { type: "user.updated", user: toUser(user) });
   }
 
   /**
@@ -105,6 +128,10 @@ export function createWsHandlers(ports: Ports): App["ws"] {
           case "typing":
             if (typeof frame.convId !== "string" || frame.convId.length === 0) throw badRequest("convId is required");
             await handleTyping(conn, frame.convId);
+            return;
+          case "presence":
+            if (typeof frame.active !== "boolean") throw badRequest("active must be true or false");
+            await handlePresence(conn, frame.active);
             return;
           case "call.signal":
             await handleCallSignal(conn, frame as Extract<ClientEvent, { type: "call.signal" }>);

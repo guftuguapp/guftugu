@@ -31,3 +31,6 @@ design/*.png
 !design/logo.png
 design/r_*.html
 design/render.html
+design/blender/assets/
+design/blender/scene/out/
+design/blender/scene/__pycache__/

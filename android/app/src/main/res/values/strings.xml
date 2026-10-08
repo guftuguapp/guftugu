@@ -81,8 +81,8 @@
     <string name="time_minutes_ago">%1$d min ago</string>
     <string name="time_hours_ago">%1$d h ago</string>
     <string name="time_yesterday">yesterday</string>
-    <string name="time_last_seen">last seen %1$s</string>
-    <string name="time_online">online</string>
+    <string name="time_last_seen">Last seen %1$s</string>
+    <string name="time_online">Online</string>
 
     <!-- Chat screen (ui/chat) -->
     <string name="chat_typing_one">%1$s is typing…</string>
@@ -480,4 +480,20 @@
     <string name="passcode_forgot_body">Ask whoever runs your Guftugu for a new invite, and set this phone up again with it.</string>
     <string name="unlock_opening">Opening your chats…</string>
     <string name="unlock_try_again">Try again</string>
+    <!-- Hiding the "connected" notice: one-time card on the chat list + Settings rows -->
+    <string name="quiet_title">Hide the “Guftugu is connected” notice</string>
+    <string name="quiet_body">Messages and calls will still notify you. Two quick settings on this phone:</string>
+    <string name="quiet_step_hide">1 · Hide the notice</string>
+    <string name="quiet_step_hidden">✓ Notice hidden</string>
+    <string name="quiet_step_keep">2 · Keep Guftugu running</string>
+    <string name="quiet_keep_running_huawei">On the Battery page, tap App launch, find Guftugu, switch it to manual and keep all three switches on.</string>
+    <string name="quiet_keep_running_oppo">Turn on Auto startup. Then in Power Saver, allow Guftugu to run in the background.</string>
+    <string name="quiet_keep_running_xiaomi">Turn on Autostart, and set Battery saver to No restrictions.</string>
+    <string name="quiet_keep_running_vivo">In Battery, allow high background power use for Guftugu.</string>
+    <string name="quiet_keep_running_samsung">In Battery, choose Unrestricted.</string>
+    <string name="quiet_keep_running_other">Allow Guftugu to run without battery restrictions.</string>
+    <string name="settings_quiet_notice">Hide the connected notice</string>
+    <string name="settings_quiet_notice_hidden">Hidden. Messages and calls still notify you.</string>
+    <string name="settings_quiet_notice_shown">Showing in your notifications. Tap to hide it.</string>
+    <string name="settings_keep_running">Keep Guftugu running</string>
 </resources>

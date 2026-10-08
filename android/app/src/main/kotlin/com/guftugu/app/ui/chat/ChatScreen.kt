@@ -186,7 +186,7 @@ fun ChatContent(
     val scope = rememberCoroutineScope()
     val copied = stringResource(R.string.chat_copied)
 
-    ChatWallpaper {
+    ChatWallpaper(leaves = true) {
     Scaffold(
         containerColor = Color.Transparent,
         snackbarHost = { SnackbarHost(snackbar) },
@@ -194,6 +194,7 @@ fun ChatContent(
             SkyTopBar(
                 title = header.title,
                 subtitle = header.subtitle,
+                alignStart = true,
                 navigationIcon = {
                     IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back)) }
                 },
@@ -351,7 +352,7 @@ private fun ChatPreview() {
     )
     GuftuguTheme {
         ChatContent(
-            header = ChatHeader("Ammi", "online", false, true),
+            header = ChatHeader("Ammi", "Online", false, true),
             list = ChatListUi(items, loaded = true),
             composer = ComposerUi(),
             draft = remember { mutableStateOf("") },

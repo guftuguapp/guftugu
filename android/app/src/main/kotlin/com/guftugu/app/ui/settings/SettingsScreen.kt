@@ -23,6 +23,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.outlined.BatteryAlert
+import androidx.compose.material.icons.outlined.BatteryChargingFull
+import androidx.compose.material.icons.outlined.NotificationsOff
 import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material.icons.outlined.Devices
 import androidx.compose.material.icons.outlined.Edit
@@ -152,6 +154,10 @@ fun SettingsContent(
     var lockDialog by rememberSaveable { mutableStateOf(false) }
     var logoutDialog by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
+    var noticeHidden by remember { mutableStateOf(com.guftugu.app.service.QuietConnection.isNoticeHidden(context)) }
+    androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+        noticeHidden = com.guftugu.app.service.QuietConnection.isNoticeHidden(context)
+    }
 
     RiverbankBackground {
         Scaffold(
@@ -200,7 +206,7 @@ fun SettingsContent(
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
-                            Text(state.serverName, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
+                            // No circle/server name under the person: people aren't tied to a server (owner's rule).
                         }
                         IconButton(onClick = { nameDialog = true }) {
                             Icon(Icons.Outlined.Edit, contentDescription = stringResource(R.string.settings_edit_name), tint = MaterialTheme.colorScheme.primary)
@@ -279,6 +285,21 @@ fun SettingsContent(
                             },
                         )
                     }
+                    // Messages and calls without the always-visible "connected" notice (owner's wish)
+                    RowDivider()
+                    SettingsRow(
+                        Icons.Outlined.NotificationsOff,
+                        stringResource(R.string.settings_quiet_notice),
+                        subtitle = stringResource(if (noticeHidden) R.string.settings_quiet_notice_hidden else R.string.settings_quiet_notice_shown),
+                        onClick = { com.guftugu.app.service.QuietConnection.open(context, com.guftugu.app.service.QuietConnection.noticeSettingsIntent(context)) },
+                    )
+                    RowDivider()
+                    SettingsRow(
+                        Icons.Outlined.BatteryChargingFull,
+                        stringResource(R.string.settings_keep_running),
+                        subtitle = stringResource(com.guftugu.app.service.QuietConnection.keepRunningHint()),
+                        onClick = { com.guftugu.app.service.QuietConnection.open(context, com.guftugu.app.service.QuietConnection.keepRunningIntent(context)) },
+                    )
                 }
 
                 // Devices

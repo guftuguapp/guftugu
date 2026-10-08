@@ -119,7 +119,7 @@ fun ChatListContent(
     var searchOpen by rememberSaveable { mutableStateOf(false) }
     var menuOpen by remember { mutableStateOf(false) }
 
-    ChatWallpaper(bottomInset = 0.dp) {
+    ChatWallpaper(bottomInset = 0.dp, leaves = true) {
         Scaffold(
             containerColor = Color.Transparent,
             topBar = {
@@ -181,6 +181,7 @@ private fun ConversationList(
         contentPadding = PaddingValues(bottom = 96.dp),
     ) {
         item(key = "fingerprint", contentType = "nudge") { FingerprintNudge() }
+        item(key = "quiet", contentType = "nudge") { QuietSetupNudge() }
         item(key = "notifications", contentType = "rationale") { NotificationRationale() }
         when {
             state.items.isEmpty() && state.filteredOut -> item(key = "empty", contentType = "empty") {

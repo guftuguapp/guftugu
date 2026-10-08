@@ -729,6 +729,15 @@ sealed class ClientEvent {
     @SerialName("typing")
     data class Typing(val convId: String) : ClientEvent()
 
+    /**
+     * The app came to the foreground (`true`, repeated about once a minute while it stays open) or went
+     * to the background (`false`). The server sets "last seen" from these; the background connection
+     * never sends them.
+     */
+    @Serializable
+    @SerialName("presence")
+    data class Presence(val active: Boolean) : ClientEvent()
+
     /** Relayed to the other party's negotiating device. */
     @Serializable
     @SerialName("call.signal")

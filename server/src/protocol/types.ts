@@ -442,4 +442,5 @@ export type ClientEvent =
   | { type: "hello" }
   | { type: "ping" }
   | { type: "typing"; convId: string }
+  | { type: "presence"; active: boolean }
   | { type: "call.signal"; callId: string; envelope: Envelope };
