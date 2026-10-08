@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.imageResource
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -19,6 +21,7 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -93,13 +96,18 @@ fun RiverbankBackground(modifier: Modifier = Modifier, content: @Composable BoxS
     )
 }
 
-/** Sky-gradient top bar with a gold hairline underneath; title in the display serif. */
+/**
+ * Sky-gradient top bar with a gold hairline underneath; title in the display serif, centred.
+ * [alignStart] is the conversation header: name and status line left-aligned one under the other
+ * in the chat's body font (the owner asked for this, WhatsApp-style).
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SkyTopBar(
     title: String,
     modifier: Modifier = Modifier,
     subtitle: String? = null,
+    alignStart: Boolean = false,
     navigationIcon: @Composable () -> Unit = {},
     actions: @Composable RowScope.() -> Unit = {},
 ) {
@@ -113,26 +121,59 @@ fun SkyTopBar(
                 drawLine(GoldLight, Offset(0f, size.height - 5.5f), Offset(size.width, size.height - 5.5f), strokeWidth = 1f)
             },
     ) {
-        CenterAlignedTopAppBar(
-            title = {
-                Box(contentAlignment = Alignment.Center) {
-                    androidx.compose.foundation.layout.Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(title, style = MaterialTheme.typography.titleLarge, color = Color.White, maxLines = 1)
+        if (alignStart) {
+            androidx.compose.material3.TopAppBar(
+                title = {
+                    androidx.compose.foundation.layout.Column(horizontalAlignment = Alignment.Start) {
+                        Text(
+                            title,
+                            style = MaterialTheme.typography.titleMedium.copy(fontSize = 18.sp, lineHeight = 22.sp),
+                            color = Color.White,
+                            maxLines = 1,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                        )
                         if (subtitle != null) {
-                            Text(subtitle, style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.85f), maxLines = 1)
+                            Text(
+                                subtitle,
+                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.5.sp),
+                                color = Color.White.copy(alpha = 0.88f),
+                                maxLines = 1,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                            )
                         }
                     }
-                }
-            },
-            navigationIcon = navigationIcon,
-            actions = actions,
-            colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                containerColor = Color.Transparent,
-                titleContentColor = Color.White,
-                navigationIconContentColor = Color.White,
-                actionIconContentColor = Color.White,
-            ),
-        )
+                },
+                navigationIcon = navigationIcon,
+                actions = actions,
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White,
+                    actionIconContentColor = Color.White,
+                ),
+            )
+        } else {
+            CenterAlignedTopAppBar(
+                title = {
+                    Box(contentAlignment = Alignment.Center) {
+                        androidx.compose.foundation.layout.Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(title, style = MaterialTheme.typography.titleLarge, color = Color.White, maxLines = 1)
+                            if (subtitle != null) {
+                                Text(subtitle, style = MaterialTheme.typography.labelSmall, color = Color.White.copy(alpha = 0.85f), maxLines = 1)
+                            }
+                        }
+                    }
+                },
+                navigationIcon = navigationIcon,
+                actions = actions,
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = Color.Transparent,
+                    titleContentColor = Color.White,
+                    navigationIconContentColor = Color.White,
+                    actionIconContentColor = Color.White,
+                ),
+            )
+        }
     }
 }
 
@@ -225,8 +266,10 @@ fun GoldButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier,
     Button(
         onClick = onClick,
         enabled = enabled,
+        // min height, not fixed: a label that wraps to two lines (e.g. "Send via WhatsApp, SMS, email…"
+        // in a dialog) must grow the button instead of being cut off at the bottom
         modifier = modifier
-            .height(50.dp)
+            .heightIn(min = 50.dp)
             .clip(RoundedCornerShape(25.dp))
             .background(if (enabled) Brushes.gold else Brush.linearGradient(listOf(OutlineWarm, OutlineWarm))),
         colors = ButtonDefaults.buttonColors(containerColor = Color.Transparent, contentColor = Ink, disabledContainerColor = Color.Transparent, disabledContentColor = Ink.copy(alpha = 0.5f)),
@@ -279,8 +322,8 @@ fun CraftListRow(modifier: Modifier = Modifier, content: @Composable RowScope.()
 // ---------------------------------------------------------------------------------------------
 
 /**
- * The chat-list header: the riverbank panorama (sky, broad trees, the stream with its paper boat)
- * under a gold serif title, finished with an ornamental gold band. Draws the status-bar area too.
+ * The chat-list header: the rendered riverbank (a low sun over a meadow, trees, the river with its paper
+ * boat) with a gold serif title in its lower right, finished with a gold band. Draws the status-bar area too.
  */
 @Composable
 fun RiverbankHeader(
@@ -297,7 +340,7 @@ fun RiverbankHeader(
             alignment = Alignment.BottomCenter,
             modifier = Modifier.fillMaxSize(),
         )
-        // legibility: a soft sky-blue scrim at the top, fading out over the hills
+        // a light scrim at the top: the outlined title reads on its own, and the rendered sky and sun stay bright
         Box(Modifier.fillMaxSize().background(HeaderScrim))
         Row(
             Modifier.fillMaxWidth().statusBarsPaddingCompat().padding(top = 4.dp, end = 4.dp),
@@ -307,14 +350,26 @@ fun RiverbankHeader(
             androidx.compose.runtime.CompositionLocalProvider(androidx.compose.material3.LocalContentColor provides Color.White, content = { actions() })
         }
         androidx.compose.foundation.layout.Column(
-            Modifier.align(Alignment.TopCenter).statusBarsPaddingCompat().padding(top = 10.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
+            Modifier.align(TitlePlacement).padding(horizontal = 18.dp),
+            horizontalAlignment = Alignment.End,
         ) {
-            Text(
-                title,
-                style = MaterialTheme.typography.displaySmall.copy(shadow = TitleShadow),
-                color = GoldLight,
-            )
+            // Legible on any art (letters used to vanish against bright sky and clouds): a dark outline
+            // drawn under the gold letters and a tight shadow.
+            Box(contentAlignment = Alignment.Center) {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.displaySmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        drawStyle = androidx.compose.ui.graphics.drawscope.Stroke(width = 7f, join = androidx.compose.ui.graphics.StrokeJoin.Round),
+                    ),
+                    color = TitleOutline,
+                )
+                Text(
+                    title,
+                    style = MaterialTheme.typography.displaySmall.copy(fontWeight = FontWeight.Bold, shadow = TitleShadow),
+                    color = GoldLight,
+                )
+            }
             if (subtitle != null) {
                 Text(subtitle, style = MaterialTheme.typography.labelMedium.copy(shadow = TitleShadow), color = Color.White)
             }
@@ -323,8 +378,15 @@ fun RiverbankHeader(
     }
 }
 
-private val HeaderScrim = Brush.verticalGradient(0f to Color(0x66123E70), 0.45f to Color(0x00123E70), 1f to Color(0x00000000))
-private val TitleShadow = androidx.compose.ui.graphics.Shadow(Color(0x99301E00), Offset(0f, 2f), blurRadius = 8f)
+/** The title's place on the banner: at the end, its middle 70% of the way down (the owner's choice), clear of the sun and sky. */
+private val TitlePlacement = Alignment { size, space, layoutDirection ->
+    val x = if (layoutDirection == androidx.compose.ui.unit.LayoutDirection.Ltr) space.width - size.width else 0
+    val y = (space.height * 0.7f - size.height / 2f).toInt().coerceIn(0, maxOf(0, space.height - size.height))
+    androidx.compose.ui.unit.IntOffset(x, y)
+}
+private val HeaderScrim = Brush.verticalGradient(0f to Color(0x40102A4C), 0.5f to Color(0x10102A4C), 1f to Color(0x00000000))
+private val TitleShadow = androidx.compose.ui.graphics.Shadow(Color(0xCC1E1200), Offset(0f, 2f), blurRadius = 4f)
+private val TitleOutline = Color(0xD93A2608)
 
 /** A plain gold band: dark edges around a bright centre line (no ornament — it must not compete with section headers). */
 @Composable
@@ -359,15 +421,54 @@ private fun Modifier.statusBarsPaddingCompat(): Modifier = this.then(Modifier.st
 /**
  * Chat background: parchment with the gold line-art riverbank resting faintly along the bottom
  * (one pre-rendered bitmap, drawn once behind the list; night mode uses a moonlit tint).
+ *
+ * [leaves]: the chat room instead fills the whole background with one floral line drawing in gold
+ * (design/make_art.py `chat_leaves`: ornate leaves and petalled flowers, every shape unique, as the
+ * owner asked). The background doesn't scroll, so it is a single screen-sized picture, centre-cropped;
+ * decoded once off the main thread and kept as an 8-bit alpha mask (~2.6 MB), tinted when drawn.
  */
 @Composable
-fun ChatWallpaper(modifier: Modifier = Modifier, bottomInset: Dp = 58.dp, content: @Composable BoxScope.() -> Unit) {
+fun ChatWallpaper(modifier: Modifier = Modifier, bottomInset: Dp = 58.dp, leaves: Boolean = false, content: @Composable BoxScope.() -> Unit) {
     val dark = GuftuguTheme.craft.isDark
+    val bg = MaterialTheme.colorScheme.background
+    if (leaves) {
+        val context = androidx.compose.ui.platform.LocalContext.current
+        val art by androidx.compose.runtime.produceState(LeafArt.cached, context) {
+            if (value == null) value = LeafArt.load(context)
+        }
+        val tint = remember(dark) {
+            androidx.compose.ui.graphics.ColorFilter.tint(if (dark) Gold.copy(alpha = 0.2f) else GoldDeep.copy(alpha = 0.32f), androidx.compose.ui.graphics.BlendMode.SrcIn)
+        }
+        Box(
+            modifier
+                .fillMaxSize()
+                .drawBehind {
+                    drawRect(bg)
+                    val img = art ?: return@drawBehind
+                    val scale = maxOf(size.width / img.width, size.height / img.height)
+                    val srcW = (size.width / scale).toInt().coerceIn(1, img.width)
+                    val srcH = (size.height / scale).toInt().coerceIn(1, img.height)
+                    drawImage(
+                        img,
+                        srcOffset = androidx.compose.ui.unit.IntOffset((img.width - srcW) / 2, (img.height - srcH) / 2),
+                        srcSize = androidx.compose.ui.unit.IntSize(srcW, srcH),
+                        dstSize = androidx.compose.ui.unit.IntSize(size.width.toInt(), size.height.toInt()),
+                        colorFilter = tint,
+                    )
+                },
+            content = content,
+        )
+    } else {
+        GoldFooterWallpaper(modifier, bottomInset, dark, bg, content)
+    }
+}
+
+@Composable
+private fun GoldFooterWallpaper(modifier: Modifier, bottomInset: Dp, dark: Boolean, bg: Color, content: @Composable BoxScope.() -> Unit) {
     val art = ImageBitmap.imageResource(R.drawable.art_chat_footer)
     val tint = remember(dark) {
         androidx.compose.ui.graphics.ColorFilter.tint(if (dark) Gold.copy(alpha = 0.16f) else GoldDeep.copy(alpha = 0.22f), androidx.compose.ui.graphics.BlendMode.SrcIn)
     }
-    val bg = MaterialTheme.colorScheme.background
     Box(
         modifier
             .fillMaxSize()
@@ -446,3 +547,18 @@ fun SealAvatar(name: String, modifier: Modifier = Modifier, size: Dp = 48.dp, gr
 
 private val SealShadow = androidx.compose.ui.graphics.Shadow(Color(0x66000000), Offset(0f, 1.5f), blurRadius = 3f)
 private fun SolidColorBrush(c: Color): Brush = androidx.compose.ui.graphics.SolidColor(c)
+
+/** The chat-room floral drawing, decoded once per process and kept as an alpha mask (1 byte per pixel). */
+private object LeafArt {
+    @Volatile var cached: ImageBitmap? = null
+
+    suspend fun load(context: android.content.Context): ImageBitmap? = cached ?: kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        cached ?: runCatching {
+            val opts = android.graphics.BitmapFactory.Options().apply { inScaled = false }
+            val full = android.graphics.BitmapFactory.decodeResource(context.resources, R.drawable.art_chat_leaves, opts)
+            val mask = full.extractAlpha()
+            if (mask !== full) full.recycle()
+            mask.asImageBitmap()
+        }.getOrNull()?.also { cached = it }
+    }
+}

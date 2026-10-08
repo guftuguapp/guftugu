@@ -18,7 +18,24 @@ render() { # name width height
     --window-size="$2,$3" --screenshot="$1.png" "file://$PWD/r_$1.html" >/dev/null 2>&1
 }
 render logo 1080 1080; render icon_foreground 1080 1080; render icon_background 1080 1080
-render header_panorama 1440 560; render chat_footer 1080 380
+render header_panorama 1440 560; render chat_footer 1080 380; render chat_leaves 1080 2400
+# Realistic Blender renders (blender/scene/riverbank.py + frame.py; the owner wanted the icon and banner
+# "more realistic", not vector art) replace the vector logo and banner when they are present.
+if [ -f rendered/logo.png ] || [ -f rendered/banner.png ]; then
+python3 - <<'PY'
+import os
+from PIL import Image
+if os.path.exists('rendered/logo.png'):
+    logo = Image.open('rendered/logo.png').convert('RGBA').resize((1080, 1080), Image.LANCZOS)
+    logo.save('logo.png')
+    fg = Image.new('RGBA', (1080, 1080), (0, 0, 0, 0))  # adaptive icon: the framed picture inside the safe zone
+    fg.alpha_composite(logo.resize((660, 660), Image.LANCZOS), (210, 210))
+    fg.save('icon_foreground.png')
+if os.path.exists('rendered/banner.png'):
+    Image.open('rendered/banner.png').convert('RGB').resize((1440, 560), Image.LANCZOS).save('header_panorama.png')
+print('using the Blender renders')
+PY
+fi
 python3 - "$RES" <<'PY'
 import sys, os
 from PIL import Image, ImageDraw
@@ -37,5 +54,7 @@ for d, m in {'mdpi': 1, 'hdpi': 1.5, 'xhdpi': 2, 'xxhdpi': 3, 'xxxhdpi': 4}.item
 logo = Image.open('logo.png').convert('RGBA'); logo.crop(logo.getbbox()).resize((900, 900), Image.LANCZOS).save(f'{R}/drawable-nodpi/logo_medallion.webp', 'WEBP', quality=90, method=6)
 Image.open('header_panorama.png').convert('RGB').save(f'{R}/drawable-nodpi/art_panorama.webp', 'WEBP', quality=86, method=6)
 Image.open('chat_footer.png').convert('RGBA').save(f'{R}/drawable-nodpi/art_chat_footer.webp', 'WEBP', quality=90, method=6)
+m = Image.open('chat_leaves.png').getchannel('A'); lv = Image.new('RGBA', m.size, (176, 138, 44, 255)); lv.putalpha(m)
+lv.save(f'{R}/drawable-nodpi/art_chat_leaves.webp', 'WEBP', lossless=True, method=6)  # flat gold + alpha: the app decodes it as an alpha mask and tints it
 print('exported to', R)
 PY

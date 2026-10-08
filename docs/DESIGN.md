@@ -42,15 +42,18 @@ one side of the shape). `Brushes.goldSheen`/`Brushes.gold` are for fills.
 
 ## Art (design/)
 
-All illustrations come from `design/make_logo.py` and `design/make_art.py`
-(deterministic generators — edit and re-run, then re-export):
+The app icon, the medallion and the chat-list banner are realistic renders made in Blender from the scene
+scripts in `design/blender/scene/` (see *Rendering the riverbank* below); `design/rendered/{logo,banner}.png` hold the
+approved renders, and `export.sh` uses them in place of the vector scene. Everything else comes from
+`design/make_logo.py` and `design/make_art.py` (deterministic generators — edit and re-run, then re-export):
 
 | Asset | Source | Used by |
 |---|---|---|
-| `drawable-nodpi/logo_medallion.webp` | `logo.svg` — square gold frame with jewelled corner rosettes around a painted riverbank: clear sky, broad spreading trees with open meadow, a stream with a paper boat and ducks, a grassy landing with stepping stones | Join/Enroll/Unlock, empty states |
-| `mipmap-*/ic_launcher_{foreground,background}.webp` | `icon_foreground.svg` (logo at 60 % so the square frame survives rounded-square masks) + `icon_background.svg` (engraved gold plate) | launcher |
-| `drawable-nodpi/art_panorama.webp` | the same scene on a wide canvas | chat-list header |
-| `drawable-nodpi/art_chat_footer.webp` | gold line-art landscape | chat and chat-list backgrounds |
+| `drawable-nodpi/logo_medallion.webp` | `rendered/logo.png` — the rendered riverbank (lush meadow, full round-crowned trees, a river curving away with a paper boat, a low golden sun in a cloudy blue sky) in a rendered gilded frame: gold moulding, a row of pearls, sapphire rosettes at the corners and diamond studs mid-edge | Join/Enroll/Unlock, empty states |
+| `mipmap-*/ic_launcher_{foreground,background}.webp` | the framed render at 660/1080 (the square frame survives rounded-square masks) + `icon_background.svg` (engraved gold plate) | launcher |
+| `drawable-nodpi/art_panorama.webp` | `rendered/banner.png` — the same riverbank from a wider view, with more trees | chat-list header |
+| `drawable-nodpi/art_chat_footer.webp` | gold line-art landscape | page backgrounds (`RiverbankBackground`) |
+| `drawable-nodpi/art_chat_leaves.webp` | full-screen gold floral line drawing (`chat_leaves`): composed sprays of petalled flowers (rose, peony, dahlia, anemone, cosmos, sakura, lily, lotus, tulip) and ornate leaves; every leaf and flower drawn from its own random parameters, so nothing repeats; stored as flat gold + alpha, decoded in-app as an alpha mask and tinted | chat room and chat list (`ChatWallpaper(leaves = true)`) |
 | `drawable/ic_paper_boat.xml`, `ic_quill.xml` | hand-drawn vectors | send button, new-chat button |
 
 The paper boat is the brand motif: a message on its way down the stream.
@@ -122,3 +125,40 @@ element transitions, no blur.
 7. Fonts are bundled; never use downloadable fonts (Google services are not guaranteed).
 8. Release builds: R8 `isMinifyEnabled = true` + `isShrinkResources = true`, arm64-v8a +
    armeabi-v7a only (WebRTC natives dominate APK size).
+
+## Owner's art notes (October 2026)
+
+- Trees: taller than wide (not the earlier broad, flat crowns); a wider river; soft puffy clouds; the chat-list
+  banner carries more trees than the icon (`scene(..., banner=True)`).
+- Chat room: filled with gold line-art only (no colour fills), mostly ornate leaves plus beautiful petalled
+  flowers, every shape unique. Rejected on the way: outline trees ("cactuses"), a coloured leaf print, a
+  scatter of small motifs ("a microscope of dust insects"), paisleys and round leaves ("amoebas").
+- Chat header: the contact's name left-aligned in the chat's body font, "Online" / "Last seen …" under it.
+- `python3 make_art.py` + `bash export.sh` regenerate everything; `chat_leaves(sheet='leaves')` and
+  `chat_leaves(sheet=True)` draw review sheets of leaves and flowers.
+- Icon and banner: the vector versions were "beautiful but not professional" ("looks like its drawn in MS Paint"),
+  so they are now realistic Blender renders. What the owner asked for on the way: full, fresh-green trees with
+  neat round crowns (scanned trees looked like reeds, then like "Kramer from Seinfeld's hair"); lush green grass,
+  wild and unkempt, never savannah-pale; a visible sun with real sunlight around it, low and golden, and every
+  shadow cast away from it; trees framing the sides so the river's flow and curve stay visible in the middle;
+  no dark tree reflections in the water; no bushes; distant hills covered in the same grass as the meadow.
+  Kept from the start: the sky and clouds, the water reflections and the paper boat.
+- The "Guftugu" title on the banner sits at the lower right, its middle 70% of the way down (the owner's choice;
+  the sky and the sun stay clear), with a dark outline under the gold letters so every letter reads on any art.
+  The top scrim is light: a dark one made the rendered sky look gloomy.
+
+## Rendering the riverbank
+
+`design/blender/scene/` holds the scene (Blender 5.2, Cycles on the CPU; assets are CC0 from Poly Haven, fetched by
+`design/blender/fetch_assets.py`; the steps are in `design/blender/README.md`):
+
+- `riverbank.py -- banner|icon OUT.png preview|final` builds the landscape: a meandering river that arches away
+  into a grassy valley, terrain with attributes that drive grass, flower, reed and forest scattering (Geometry
+  Nodes), groves placed on the sides, a paper boat, a cumulus sky photograph for the sky and reflections, and a low
+  sun lamp that has a visible disc in the same direction. It writes `OUT.png.sun`, the sun's spot in the frame.
+- `trees.py` builds the trees: a trunk that forks into limbs, each carrying a leafy mass made of the asset's real
+  leaf clusters scattered over a shaped crown, with a dark core so no sky shows through.
+- `glow.py IN OUT` adds the warm halo around the sun and a soft bloom.
+- `frame.py OUT.png final` renders the gilded frame alone (the opening is a shadow catcher), and
+  `frame_compose.py FRAME PICTURE OUT` lays the icon picture under it, so the picture is never tone-mapped twice.
+- Preview renders take about 3–4 minutes each; finals render at the app's sizes (1440×560 and 1080×1080).

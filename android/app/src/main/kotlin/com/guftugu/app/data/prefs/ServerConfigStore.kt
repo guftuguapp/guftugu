@@ -51,6 +51,10 @@ data class ServerConfig(
     val lastPasscodeAt: Long = 0L,
     /** "Not now" on the fingerprint card: hide it until this time. */
     val fingerprintNudgeHiddenUntil: Long = 0L,
+    /** The "hide the connected notice" card was dismissed, or both of its steps were opened. */
+    val quietSetupDone: Boolean = false,
+    /** The phone's keep-running settings page was opened from Guftugu at least once. */
+    val keepRunningVisited: Boolean = false,
 ) {
     val isEnrolled: Boolean get() = apiUrl != null && userId != null && deviceId != null
 }
@@ -81,6 +85,8 @@ class ServerConfigStore(context: Context) {
         val passcodeSnoozedUntil = longPreferencesKey("passcodeSnoozedUntil")
         val lastPasscodeAt = longPreferencesKey("lastPasscodeAt")
         val fingerprintNudgeHiddenUntil = longPreferencesKey("fingerprintNudgeHiddenUntil")
+        val quietSetupDone = booleanPreferencesKey("quietSetupDone")
+        val keepRunningVisited = booleanPreferencesKey("keepRunningVisited")
     }
 
     private val iceListSerializer = ListSerializer(IceServer.serializer())
@@ -136,6 +142,10 @@ class ServerConfigStore(context: Context) {
 
     suspend fun setFingerprintNudgeHiddenUntil(at: Long) = dataStore.edit { it[Keys.fingerprintNudgeHiddenUntil] = at }
 
+    suspend fun setQuietSetupDone(done: Boolean) = dataStore.edit { it[Keys.quietSetupDone] = done }
+
+    suspend fun setKeepRunningVisited() = dataStore.edit { it[Keys.keepRunningVisited] = true }
+
     /** Forget everything (logout after revocation / re-enrol). */
     suspend fun clear() = dataStore.edit { it.clear() }
 
@@ -160,5 +170,7 @@ class ServerConfigStore(context: Context) {
         passcodeSnoozedUntil = this[Keys.passcodeSnoozedUntil] ?: 0L,
         lastPasscodeAt = this[Keys.lastPasscodeAt] ?: 0L,
         fingerprintNudgeHiddenUntil = this[Keys.fingerprintNudgeHiddenUntil] ?: 0L,
+        quietSetupDone = this[Keys.quietSetupDone] ?: false,
+        keepRunningVisited = this[Keys.keepRunningVisited] ?: false,
     )
 }

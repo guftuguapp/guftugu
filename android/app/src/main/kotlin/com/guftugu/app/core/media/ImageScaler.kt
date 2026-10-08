@@ -28,7 +28,9 @@ object ImageScaler {
     /** Pixel size without decoding pixels; swaps width/height for 90°/270° EXIF rotations. */
     fun readDimensions(open: () -> InputStream?): Dimensions? {
         val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        open()?.use { BitmapFactory.decodeStream(it, null, opts) } ?: return null
+        // A bounds-only decode always returns null by design (it just fills outWidth/outHeight), so only
+        // a stream that won't open means failure here; the size check below catches non-images.
+        (open() ?: return null).use { BitmapFactory.decodeStream(it, null, opts) }
         if (opts.outWidth <= 0 || opts.outHeight <= 0) return null
         val rotation = runCatching { open()?.use { exifRotation(it) } ?: 0 }.getOrDefault(0)
         return if (rotation == 90 || rotation == 270) Dimensions(opts.outHeight, opts.outWidth) else Dimensions(opts.outWidth, opts.outHeight)
@@ -45,7 +47,9 @@ object ImageScaler {
      */
     fun decodeScaled(open: () -> InputStream?, maxSide: Int): Bitmap? {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        open()?.use { BitmapFactory.decodeStream(it, null, bounds) } ?: return null
+        // bounds-only decode returns null by design: don't treat that as "unreadable" (it made every
+        // photo and avatar upload fail with "cannot read the selected file")
+        (open() ?: return null).use { BitmapFactory.decodeStream(it, null, bounds) }
         if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
         val opts = BitmapFactory.Options().apply {
             inSampleSize = sampleSize(bounds.outWidth, bounds.outHeight, maxSide)

@@ -61,6 +61,48 @@ describe("websocket", () => {
     expect(t.ports.realtime.eventsFor(connA).at(-1)).toMatchObject({ type: "error", code: "invalid_request" });
   });
 
+  it("presence: opening/closing the app stamps lastSeenAt and tells co-members, not strangers or people I blocked", async () => {
+    const t = makeApp();
+    const a = await enrollUser(t.app, "A");
+    const b = await enrollUser(t.app, "B");
+    const c = await enrollUser(t.app, "C");
+    const x = await enrollUser(t.app, "X");
+    await directConversation(t.app, a, b);
+    await directConversation(t.app, a, c);
+    const connA = await connect(t, a);
+    const connB = await connect(t, b);
+    const connC = await connect(t, c);
+    const connX = await connect(t, x);
+    expect((await call(t.app, "POST", `/friends/${c.userId}/block`, { token: a.token })).status).toBe(204);
+    t.ports.realtime.clear();
+    t.ports.clock.advance(60_000);
+
+    await frame(t, connA, { type: "presence", active: true });
+    const opened = t.ports.clock.now();
+    expect((await t.ports.db.users.get(a.userId))?.lastSeenAt).toBe(opened);
+    const toB = t.ports.realtime.ofType("user.updated", connB);
+    expect(toB).toHaveLength(1);
+    expect(toB[0]).toMatchObject({ type: "user.updated", user: { userId: a.userId, lastSeenAt: opened } });
+    expect(t.ports.realtime.ofType("user.updated", connC)).toHaveLength(0); // blocked by A
+    expect(t.ports.realtime.ofType("user.updated", connX)).toHaveLength(0); // shares no conversation
+    expect(t.ports.realtime.ofType("user.updated", connA)).toHaveLength(0);
+
+    // a heartbeat seconds later changes nothing visible: no write, no fan-out
+    t.ports.clock.advance(5_000);
+    await frame(t, connA, { type: "presence", active: true });
+    expect((await t.ports.db.users.get(a.userId))?.lastSeenAt).toBe(opened);
+    expect(t.ports.realtime.ofType("user.updated", connB)).toHaveLength(1);
+
+    // closing the app always stamps the time they left
+    t.ports.clock.advance(5_000);
+    await frame(t, connA, { type: "presence", active: false });
+    expect((await t.ports.db.users.get(a.userId))?.lastSeenAt).toBe(t.ports.clock.now());
+    expect(t.ports.realtime.ofType("user.updated", connB)).toHaveLength(2);
+
+    await frame(t, connA, { type: "presence" });
+    expect(t.ports.realtime.eventsFor(connA).at(-1)).toMatchObject({ type: "error", code: "invalid_request" });
+  });
+
   it("call.signal routing: before answer caller->all callee devices, callee->caller device; after answer strictly the pair", async () => {
     const t = makeApp();
     const a = await enrollUser(t.app, "A");

@@ -341,6 +341,7 @@ Client → server:
 | `hello`       | `{}` — first frame after connecting |
 | `ping`        | `{}` — at least every 4 min |
 | `typing`      | `{ convId }` — ≤ 1 per 3 s |
+| `presence`    | `{ active }` — `true` when the app comes to the foreground (and about once a minute while it stays open), `false` when it goes to the background. Sets the user's `lastSeenAt` and sends `user.updated` to everyone who shares a conversation with them (except people they blocked). The always-on background connection never sends it, so "last seen" means "last had the app open". |
 | `call.signal` | `{ callId, envelope }` — relayed to the other party's negotiating device |
 
 Decrypted `call.signal` content: `{ "kind": "offer"|"answer", "sdp" }` or

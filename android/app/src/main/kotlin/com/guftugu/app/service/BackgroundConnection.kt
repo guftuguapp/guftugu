@@ -10,11 +10,15 @@ import com.guftugu.app.GuftuguApp
 import com.guftugu.app.data.repo.AuthState
 import com.guftugu.app.data.sync.AppVisibility
 import com.guftugu.app.data.sync.SyncWorker
+import com.guftugu.app.data.ws.ConnectionState
 import com.guftugu.app.di.AppGraph
+import com.guftugu.app.protocol.ClientEvent
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -66,7 +70,41 @@ object BackgroundConnection {
                 .distinctUntilChanged()
                 .collect { reconcile(app, graph, it) }
         }
+        graph.appScope.launch {
+            graph.authRepository.state.map { it is AuthState.Unlocked }.distinctUntilChanged().collectLatest { unlocked ->
+                if (unlocked) reportPresence(graph)
+            }
+        }
     }
+
+    /**
+     * "Last seen" (PROTOCOL.md §12 `presence`): `active` as soon as the app is on screen and every minute
+     * while it stays there, `inactive` when it leaves. Only after an `active`, so a background start
+     * (boot, sticky restart) never counts as being online.
+     */
+    private suspend fun reportPresence(graph: AppGraph) {
+        var reportedActive = false
+        combine(
+            AppVisibility.visible,
+            graph.realtime.state.map { it is ConnectionState.Connected }.distinctUntilChanged(),
+        ) { visible, connected -> visible to connected }
+            .distinctUntilChanged()
+            .collectLatest { (visible, connected) ->
+                if (!connected) return@collectLatest
+                if (visible) {
+                    while (true) {
+                        graph.realtime.send(ClientEvent.Presence(active = true))
+                        reportedActive = true
+                        delay(PRESENCE_HEARTBEAT_MS)
+                    }
+                } else if (reportedActive) {
+                    graph.realtime.send(ClientEvent.Presence(active = false))
+                    reportedActive = false
+                }
+            }
+    }
+
+    private const val PRESENCE_HEARTBEAT_MS = 60_000L
 
     internal fun reconcile(context: Context, graph: AppGraph, d: Desired) {
         when {

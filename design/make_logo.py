@@ -48,11 +48,12 @@ def canopy(cx, cy, w, h, seed, pal, n=78, rmin=0.11, rmax=0.22):
     return '\n'.join(out)
 
 def broad_tree(x, ground, scale, seed, pal=None, branches=3):
-    """Short, thick trunk splitting into wide limbs under a broad canopy + a soft ground shadow."""
+    """Sturdy trunk splitting into limbs under a tall, rounded crown, clearly taller than wide
+    (the owner found the earlier wide, flat crowns too broad) + a soft ground shadow."""
     pal = pal or ("#2E6B2C", "#4E9A3A", "#8FCB5C", "#D2F09A")
     s = scale
-    trunk_top = ground - 70 * s
-    cw, ch = 175 * s, 78 * s
+    trunk_top = ground - 108 * s
+    cw, ch = 112 * s, 122 * s
     ccx, ccy = x, trunk_top - ch * 0.62
     parts = []
     parts.append(f'<ellipse cx="{f(x + 14 * s)}" cy="{f(ground + 4 * s)}" rx="{f(cw * 0.95)}" ry="{f(16 * s)}" fill="#1F4F22" opacity="0.28"/>')
@@ -73,15 +74,15 @@ def broad_tree(x, ground, scale, seed, pal=None, branches=3):
         my = trunk_top - 18 * s
         limbs.append(f'<path d="M{f(x)} {f(trunk_top + 6*s)} Q{f(mx)} {f(my)} {f(ex)} {f(ey)}" stroke="#5A3E22" stroke-width="{f(9*s if abs(k) > 0.4 else 7*s)}" stroke-linecap="round" fill="none"/>')
     parts.extend(limbs)
-    parts.append(canopy(ccx, ccy, cw, ch, seed, pal))
+    parts.append(canopy(ccx, ccy, cw, ch, seed, pal, rmin=0.09, rmax=0.17))
     # a few limbs peeking below the canopy edge
     parts.append(f'<path d="M{f(x - cw*0.35)} {f(ccy + ch*0.55)} q{f(-10*s)} {f(8*s)} {f(-26*s)} {f(6*s)}" stroke="#5A3E22" stroke-width="{f(4*s)}" stroke-linecap="round" fill="none" opacity="0.9"/>')
     return '\n'.join(parts)
 
 def far_tree(x, ground, s, seed):
     pal = ("#4C7F5C", "#6A9E72", "#9CC78C", "#C8E6AE")
-    return (f'<rect x="{f(x - 3*s)}" y="{f(ground - 20*s)}" width="{f(6*s)}" height="{f(20*s)}" fill="#6B5A44"/>' +
-            canopy(x, ground - 34 * s, 46 * s, 20 * s, seed, pal, n=16))
+    return (f'<rect x="{f(x - 3*s)}" y="{f(ground - 24*s)}" width="{f(6*s)}" height="{f(24*s)}" fill="#6B5A44"/>' +
+            canopy(x, ground - 42 * s, 32 * s, 28 * s, seed, pal, n=16, rmin=0.09, rmax=0.17))
 
 def tuft(x, y, s=1.0, c1="#3E8A2E", c2="#6DBF45"):
     return (f'<g transform="translate({f(x)} {f(y)}) scale({f(s)})" fill="none" stroke-linecap="round">'
@@ -149,7 +150,17 @@ def cartouche(cx, cy, rot):
             f'<circle cx="-2.2" cy="-2.2" r="2.2" fill="#FFFFFF" opacity="0.85"/></g>')
 
 # ---------------------------------------------------------------- scene
-def scene(px0, py0, px1, py1):
+def cloud(cx, cy, s, op=0.95):
+    """A soft, puffy cumulus: a flat-bottomed cluster of white puffs over a pale blue-grey underside."""
+    puffs = [(-48, 4, 22), (-22, -10, 30), (8, -18, 36), (40, -6, 28), (64, 6, 18)]
+    under = f'<ellipse cx="{f(cx + 8*s)}" cy="{f(cy + 12*s)}" rx="{f(78*s)}" ry="{f(14*s)}" fill="#CFE0F2"/>'
+    body = ''.join(f'<circle cx="{f(cx + dx*s)}" cy="{f(cy + dy*s)}" r="{f(r*s)}" fill="#FFFFFF"/>' for dx, dy, r in puffs)
+    base = f'<ellipse cx="{f(cx + 8*s)}" cy="{f(cy + 6*s)}" rx="{f(74*s)}" ry="{f(14*s)}" fill="#FFFFFF"/>'
+    return f'<g opacity="{op}">{under}{body}{base}</g>'
+
+def scene(px0, py0, px1, py1, banner=False):
+    """The riverbank painting. banner: the wide chat-list header gets a fuller grove and more
+    clouds (the owner wants more trees there than on the icon)."""
     w = px1 - px0
     s = []
     def X(t): return px0 + t * w          # 0..1 -> x
@@ -158,16 +169,22 @@ def scene(px0, py0, px1, py1):
     # sun + glow (upper right)
     s.append(f'<circle cx="{f(X(0.76))}" cy="{f(Y(0.2))}" r="170" fill="url(#sunGlow)"/>')
     s.append(f'<circle cx="{f(X(0.76))}" cy="{f(Y(0.2))}" r="34" fill="#FFF8D2"/>')
-    # a couple of thin, high clouds (clear sky)
+    # thin, high wisps plus soft puffy clouds (the owner asked for more clouds), kept clear of the sun and birds
     s.append(f'<g fill="#FFFFFF" opacity="0.8"><ellipse cx="{f(X(0.28))}" cy="{f(Y(0.2))}" rx="78" ry="12"/><ellipse cx="{f(X(0.33))}" cy="{f(Y(0.185))}" rx="44" ry="15"/>'
              f'<ellipse cx="{f(X(0.52))}" cy="{f(Y(0.31))}" rx="60" ry="8" opacity="0.7"/></g>')
+    puffy = [(0.17, 0.12, 0.85), (0.31, 0.3, 0.6), (0.56, 0.25, 0.55), (0.93, 0.36, 0.55)]
+    if banner:
+        puffy += [(0.05, 0.3, 0.55), (0.43, 0.06, 0.5), (0.62, 0.4, 0.45), (0.98, 0.18, 0.6)]
+    for (cx_, cy_, cs) in puffy:
+        s.append(cloud(X(cx_), Y(cy_), cs))
     # birds
     for (bx, by, bs) in [(0.40, 0.14, 1.0), (0.45, 0.17, 0.75), (0.60, 0.11, 0.6)]:
         s.append(f'<path d="M{f(X(bx)-12*bs)} {f(Y(by))} q{f(6*bs)} {f(-7*bs)} {f(12*bs)} 0 q{f(6*bs)} {f(-7*bs)} {f(12*bs)} 0" stroke="#2B3A4A" stroke-width="{f(2.4*bs)}" fill="none" stroke-linecap="round"/>')
     # low, far hills (atmospheric)
     s.append(f'<path d="M{px0} {f(Y(0.53))} C{f(X(0.15))} {f(Y(0.47))} {f(X(0.3))} {f(Y(0.48))} {f(X(0.42))} {f(Y(0.515))} C{f(X(0.55))} {f(Y(0.55))} {f(X(0.66))} {f(Y(0.46))} {f(X(0.82))} {f(Y(0.48))} C{f(X(0.9))} {f(Y(0.49))} {f(X(0.96))} {f(Y(0.5))} {px1} {f(Y(0.51))} L{px1} {f(Y(0.62))} L{px0} {f(Y(0.62))} Z" fill="url(#farHills)"/>')
     # far broad trees on the horizon
-    for i, (tx, ty, ts) in enumerate([(0.07, 0.565, 0.8), (0.18, 0.56, 0.9), (0.27, 0.57, 0.7), (0.66, 0.555, 0.85), (0.78, 0.55, 0.95), (0.9, 0.56, 0.8)]):
+    for i, (tx, ty, ts) in enumerate([(0.07, 0.565, 0.8), (0.125, 0.558, 0.7), (0.18, 0.56, 0.9), (0.27, 0.57, 0.7), (0.345, 0.566, 0.6),
+                                      (0.66, 0.555, 0.85), (0.72, 0.551, 0.72), (0.78, 0.55, 0.95), (0.9, 0.56, 0.8)]):
         s.append(far_tree(X(tx), Y(ty), ts, 100 + i))
     # nearer hills
     s.append(f'<path d="M{px0} {f(Y(0.58))} C{f(X(0.2))} {f(Y(0.55))} {f(X(0.38))} {f(Y(0.585))} {f(X(0.5))} {f(Y(0.575))} C{f(X(0.62))} {f(Y(0.565))} {f(X(0.8))} {f(Y(0.545))} {px1} {f(Y(0.57))} L{px1} {f(Y(0.7))} L{px0} {f(Y(0.7))} Z" fill="url(#nearHills)"/>')
@@ -179,7 +196,8 @@ def scene(px0, py0, px1, py1):
 
     # the stream: thin in the distance, widening towards us, one gentle S-curve
     L, R = [], []
-    pts = [(0.52, 0.615, 0.008), (0.50, 0.64, 0.014), (0.44, 0.68, 0.024), (0.40, 0.72, 0.034), (0.43, 0.77, 0.048), (0.52, 0.82, 0.066), (0.57, 0.88, 0.09), (0.55, 0.94, 0.115), (0.50, 1.0, 0.14)]
+    # (the owner asked twice for a wider river: keep it generous, the banks below are set back to match)
+    pts = [(0.52, 0.615, 0.02), (0.50, 0.64, 0.032), (0.44, 0.68, 0.052), (0.40, 0.72, 0.07), (0.43, 0.77, 0.095), (0.52, 0.82, 0.125), (0.57, 0.88, 0.16), (0.55, 0.94, 0.19), (0.50, 1.0, 0.22)]
     for (cx, cy, hw) in pts:
         L.append((X(cx) - hw * w, Y(cy)))
         R.append((X(cx) + hw * w, Y(cy)))
@@ -215,34 +233,44 @@ def scene(px0, py0, px1, py1):
         s.append(f'<g transform="translate({f(x)} {f(y)}) scale({dsc})"><ellipse cx="0" cy="0" rx="13" ry="7" fill="#8B6A4A"/>'
                  f'<circle cx="11" cy="-7" r="5.5" fill="#2E6B4A"/><path d="M15 -7 l7 1.5 l-7 1.5 z" fill="#F2B233"/>'
                  f'<circle cx="12.5" cy="-8.5" r="1.1" fill="#FFFFFF"/><path d="M-10 -2 q6 -5 12 0" stroke="#E8DCC8" stroke-width="2" fill="none"/></g>')
-    # broad trees: spacious, one big on each side of the stream, one mid, open meadow between
-    s.append(broad_tree(X(0.2), Y(0.74), 1.18, 11))
+    # trees: a big one on each side of the stream with a few more behind them, still with open
+    # meadow between; drawn far-to-near so nearer crowns overlap the ones behind
+    far_pal = ("#3E7447", "#5E9B55", "#9CCA78", "#D2EDB2")
+    if banner:
+        for (tx, ty, ts, seed) in [(0.11, 0.655, 0.6, 71), (0.27, 0.65, 0.55, 73), (0.715, 0.645, 0.55, 79), (0.87, 0.66, 0.62, 83)]:
+            s.append(broad_tree(X(tx), Y(ty), ts, seed, pal=far_pal))
+    s.append(broad_tree(X(0.34), Y(0.64), 0.5, 41, pal=far_pal))
+    s.append(broad_tree(X(0.64), Y(0.635), 0.48, 37, pal=far_pal))
+    s.append(broad_tree(X(0.93), Y(0.655), 0.62, 53, pal=("#36703B", "#56A048", "#98CE6C", "#D4F0A8")))
     s.append(broad_tree(X(0.8), Y(0.69), 0.9, 23, pal=("#2F6A33", "#4F983F", "#94CC62", "#D6F1A0")))
-    s.append(broad_tree(X(0.64), Y(0.635), 0.48, 37, pal=("#3E7447", "#5E9B55", "#9CCA78", "#D2EDB2")))
+    s.append(broad_tree(X(0.04), Y(0.69), 0.8, 67, pal=("#2F6A33", "#4F983F", "#94CC62", "#D6F1A0")))
+    if banner:
+        s.append(broad_tree(X(0.985), Y(0.71), 0.85, 89, pal=("#2F6A33", "#4F983F", "#94CC62", "#D6F1A0")))
+    s.append(broad_tree(X(0.2), Y(0.74), 1.18, 11))
 
     # grassy landing on the near-right bank: a flat, sunlit ledge by the water with stepping stones
-    s.append(f'<path d="M{f(X(0.66))} {f(Y(0.86))} C{f(X(0.72))} {f(Y(0.835))} {f(X(0.86))} {f(Y(0.84))} {px1} {f(Y(0.83))} L{px1} {py1} L{f(X(0.75))} {py1} C{f(X(0.7))} {f(Y(0.95))} {f(X(0.66))} {f(Y(0.9))} {f(X(0.66))} {f(Y(0.86))} Z" fill="url(#landing)"/>')
-    s.append(f'<path d="M{f(X(0.66))} {f(Y(0.86))} C{f(X(0.66))} {f(Y(0.9))} {f(X(0.7))} {f(Y(0.95))} {f(X(0.75))} {py1}" stroke="#7A5A36" stroke-width="7" fill="none" opacity="0.8"/>')
-    s.append(f'<ellipse cx="{f(X(0.8))}" cy="{f(Y(0.875))}" rx="110" ry="24" fill="#C4EC86" opacity="0.75"/>')
-    s.append(f'<ellipse cx="{f(X(0.79))}" cy="{f(Y(0.872))}" rx="70" ry="13" fill="#DDF7A8" opacity="0.7"/>')
-    for (cx, cy, rx, ry) in [(0.62, 0.9, 20, 9), (0.595, 0.945, 24, 10), (0.635, 0.985, 26, 11)]:
+    s.append(f'<path d="M{f(X(0.71))} {f(Y(0.86))} C{f(X(0.76))} {f(Y(0.835))} {f(X(0.88))} {f(Y(0.84))} {px1} {f(Y(0.83))} L{px1} {py1} L{f(X(0.8))} {py1} C{f(X(0.75))} {f(Y(0.95))} {f(X(0.71))} {f(Y(0.9))} {f(X(0.71))} {f(Y(0.86))} Z" fill="url(#landing)"/>')
+    s.append(f'<path d="M{f(X(0.71))} {f(Y(0.86))} C{f(X(0.71))} {f(Y(0.9))} {f(X(0.75))} {f(Y(0.95))} {f(X(0.8))} {py1}" stroke="#7A5A36" stroke-width="7" fill="none" opacity="0.8"/>')
+    s.append(f'<ellipse cx="{f(X(0.85))}" cy="{f(Y(0.875))}" rx="110" ry="24" fill="#C4EC86" opacity="0.75"/>')
+    s.append(f'<ellipse cx="{f(X(0.84))}" cy="{f(Y(0.872))}" rx="70" ry="13" fill="#DDF7A8" opacity="0.7"/>')
+    for (cx, cy, rx, ry) in [(0.665, 0.9, 20, 9), (0.64, 0.945, 24, 10), (0.68, 0.985, 26, 11)]:
         s.append(f'<ellipse cx="{f(X(cx))}" cy="{f(Y(cy))}" rx="{rx}" ry="{ry}" fill="#A99C86" stroke="#6E6252" stroke-width="1.6"/>'
                  f'<ellipse cx="{f(X(cx) - 4)}" cy="{f(Y(cy) - 3)}" rx="{rx*0.6}" ry="{ry*0.45}" fill="#CFC4AE" opacity="0.8"/>')
     # near-left bank with reeds
-    s.append(f'<path d="M{px0} {f(Y(0.86))} C{f(X(0.12))} {f(Y(0.85))} {f(X(0.28))} {f(Y(0.87))} {f(X(0.36))} {f(Y(0.9))} C{f(X(0.4))} {f(Y(0.92))} {f(X(0.4))} {f(Y(0.97))} {f(X(0.37))} {py1} L{px0} {py1} Z" fill="url(#landing)"/>')
-    for (rx_, ry_, rs) in [(0.35, 0.93, 0.8), (0.33, 0.96, 0.62), (0.37, 0.975, 0.5)]:
+    s.append(f'<path d="M{px0} {f(Y(0.86))} C{f(X(0.1))} {f(Y(0.85))} {f(X(0.22))} {f(Y(0.87))} {f(X(0.3))} {f(Y(0.9))} C{f(X(0.33))} {f(Y(0.92))} {f(X(0.33))} {f(Y(0.97))} {f(X(0.3))} {py1} L{px0} {py1} Z" fill="url(#landing)"/>')
+    for (rx_, ry_, rs) in [(0.29, 0.93, 0.8), (0.27, 0.96, 0.62), (0.31, 0.975, 0.5)]:
         x = X(rx_); y = Y(ry_)
         s.append(f'<g transform="translate({f(x)} {f(y)}) scale({rs})"><path d="M0 0 L0 -110" stroke="#4C8E33" stroke-width="5" stroke-linecap="round"/>'
                  f'<ellipse cx="0" cy="-118" rx="6" ry="20" fill="#6B4A2B"/><path d="M0 -30 C14 -50 20 -80 18 -120" stroke="#6DB44A" stroke-width="4" fill="none" stroke-linecap="round"/>'
                  f'<path d="M0 -20 C-12 -40 -22 -70 -20 -100" stroke="#3E7F2B" stroke-width="4" fill="none" stroke-linecap="round"/></g>')
     rnd = random.Random(5)
     for _ in range(26):
-        tx = rnd.choice([rnd.uniform(0.02, 0.33), rnd.uniform(0.7, 0.98)])
+        tx = rnd.choice([rnd.uniform(0.02, 0.27), rnd.uniform(0.75, 0.98)])
         ty = rnd.uniform(0.86, 0.99)
         s.append(tuft(X(tx), Y(ty), rnd.uniform(0.7, 1.15)))
-    for (tx, ty, sc, c) in [(0.78, 0.9, 1.0, "#FFFFFF"), (0.86, 0.93, 0.9, "#FFE27A"), (0.93, 0.88, 0.8, "#FFFFFF"), (0.72, 0.96, 0.9, "#F7A6B8"),
-                            (0.1, 0.92, 0.9, "#FFFFFF"), (0.18, 0.95, 0.85, "#FFE27A"), (0.26, 0.9, 0.7, "#F7A6B8"), (0.05, 0.97, 0.8, "#FFFFFF"),
-                            (0.35, 0.75, 0.55, "#FFFFFF"), (0.9, 0.76, 0.55, "#FFE27A"), (0.12, 0.8, 0.6, "#FFFFFF")]:
+    for (tx, ty, sc, c) in [(0.8, 0.9, 1.0, "#FFFFFF"), (0.87, 0.93, 0.9, "#FFE27A"), (0.94, 0.88, 0.8, "#FFFFFF"), (0.8, 0.965, 0.9, "#F7A6B8"),
+                            (0.1, 0.92, 0.9, "#FFFFFF"), (0.18, 0.95, 0.85, "#FFE27A"), (0.24, 0.9, 0.7, "#F7A6B8"), (0.05, 0.97, 0.8, "#FFFFFF"),
+                            (0.27, 0.75, 0.55, "#FFFFFF"), (0.9, 0.76, 0.55, "#FFE27A"), (0.12, 0.8, 0.6, "#FFFFFF")]:
         s.append(flower(X(tx), Y(ty), sc, petal=c))
     # painterly grain + gentle vignette
     s.append(f'<rect x="{px0}" y="{py0}" width="{w}" height="{py1-py0}" fill="url(#vignette)"/>')
